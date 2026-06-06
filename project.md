@@ -1,19 +1,29 @@
 emotion_recognition/
 ├── main.py                 # Главный файл
+├── config.json            # Сохраняемая конфигурация (создается автоматически)
+├── test_image.jpg         # Тестовое изображение (создается автоматически)
+├── gui/
+│   └── config_window.py   # Окно конфигурации
 ├── core/
-│   ├── __init__.py
-│   ├── video_source.py    # Захват видео (скриншоты)
-│   ├── face_detector.py   # Детектор лиц (Haar Cascade)
-│   ├── face_recognizer.py # Распознавание лиц (свой-чужой)
-│   ├── emotion_analyzer.py # Анализ эмоций
-│   ├── drawer.py          # Отрисовка графики
-│   └── dialog_manager.py  # Управление диалогами
+│   ├── video_source_base.py
+│   ├── video_source_webcam.py
+│   ├── video_source_file.py
+│   ├── video_source_image.py
+│   ├── video_source_screen.py
+│   ├── video_source_factory.py
+│   ├── face_detector.py
+│   ├── face_recognizer.py
+│   ├── emotion_analyzer.py
+│   ├── dialog_manager.py
+│   ├── drawer.py
+│   ├── audio_source.py
+│   ├── speech_recognizer.py
+│   └── audio_commands.py
 ├── input/
-│   ├── __init__.py
-│   └── key_handler.py     # Обработка клавиш
+│   └── key_handler.py
 ├── storage/
-│   ├── __init__.py
-│   └── face_storage.py    # Хранение лиц
-└── utils/
-    ├── __init__.py
-    └── text_renderer.py   # Рендеринг текста с кириллицей
+│   └── face_storage.py
+├── utils/
+│   └── text_renderer.py
+├── known_faces/           # Папка с известными лицами
+└── screenshots/           # Папка со скриншотами
