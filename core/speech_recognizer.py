@@ -24,6 +24,7 @@ class SpeechRecognizer:
         'выход': 'exit',
         'закрой': 'exit',
         'стоп': 'exit',
+        'пошли за пивом': 'exit',
         
         # Добавление лиц
         'добавить': 'add_face',
