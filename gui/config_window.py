@@ -523,3 +523,65 @@ def create_test_image():
                    cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
         cv2.imwrite("test_image.jpg", test_image)
         print("✓ Создано тестовое изображение: test_image.jpg")
+
+        
+def _add_fps_control(self, parent, default_fps=10):
+    """Добавление контроля FPS"""
+    tk.Label(
+        parent,
+        text="Макс. FPS:",
+        font=('Arial', 10),
+        fg='white',
+        bg='#2b2b2b'
+    ).grid(row=100, column=0, sticky='w', pady=5)
+    
+    self.fps_var = tk.IntVar(value=default_fps)
+    fps_spin = tk.Spinbox(
+        parent,
+        from_=1,
+        to=30,
+        textvariable=self.fps_var,
+        width=10,
+        font=('Arial', 10)
+    )
+    fps_spin.grid(row=100, column=1, sticky='w', pady=5, padx=10)
+    
+    tk.Label(
+        parent,
+        text="(меньше FPS = меньше нагрузка на CPU)",
+        font=('Arial', 9),
+        fg='gray',
+        bg='#2b2b2b'
+    ).grid(row=100, column=2, sticky='w', pady=5, padx=10)
+    
+    return self.fps_var
+
+# И обновите методы создания параметров, добавив вызов _add_fps_control:
+
+def _create_screen_params(self):
+    """Параметры для захвата экрана"""
+    # ... существующий код ...
+    
+    # Добавляем контроль FPS
+    self._add_fps_control(self.dynamic_frame, default_fps=10)
+
+def _create_webcam_params(self):
+    """Параметры для веб-камеры"""
+    # ... существующий код ...
+    
+    # Добавляем контроль FPS
+    self._add_fps_control(self.dynamic_frame, default_fps=15)
+
+def _create_video_params(self):
+    """Параметры для видеофайла"""
+    # ... существующий код ...
+    
+    # Добавляем контроль FPS
+    self._add_fps_control(self.dynamic_frame, default_fps=15)
+
+def _create_image_params(self):
+    """Параметры для изображения"""
+    # ... существующий код ...
+    
+    # Добавляем контроль FPS
+    self._add_fps_control(self.dynamic_frame, default_fps=5)

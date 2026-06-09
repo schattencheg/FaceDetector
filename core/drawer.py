@@ -49,39 +49,33 @@ class Drawer:
     def draw_info_panel(self, frame, known_count, is_learning_mode, is_paused=False):
         """Отрисовка информационной панели"""
         if is_paused:
-            # Затемнение экрана
+            # ... существующий код ...
+            pass
+        elif is_learning_mode:
+            # Желтая мигающая рамка по краям экрана
             overlay = frame.copy()
-            cv2.rectangle(overlay, (0, 0), (frame.shape[1], frame.shape[0]), (0, 0, 0), -1)
-            frame = cv2.addWeighted(overlay, 0.7, frame, 0.3, 0)
+            cv2.rectangle(overlay, (0, 0), (frame.shape[1], frame.shape[0]), (0, 255, 255), 3)
+            frame = cv2.addWeighted(overlay, 0.3, frame, 0.7, 0)
             
             frame = self.text_renderer.draw_text(
-                frame, "ДОБАВЛЕНИЕ НОВОГО ЛИЦА...",
-                (frame.shape[1]//2 - 200, frame.shape[0]//2), 32, self.colors['white']
-            )
-            frame = self.text_renderer.draw_text(
-                frame, "Пожалуйста, подождите",
-                (frame.shape[1]//2 - 150, frame.shape[0]//2 + 50), 24, self.colors['gray']
-            )
-        elif is_learning_mode:
-            frame = self.text_renderer.draw_text(
-                frame, "РЕЖИМ ОБУЧЕНИЯ: ВКЛ (нажмите 'l' для выхода)",
-                (10, 30), 24, self.colors['learning']
+                frame, "РЕЖИМ ОБУЧЕНИЯ: ВКЛЮЧЕН (нажмите 'l' для выключения)",
+                (10, 30), 24, (0, 255, 255)
             )
             frame = self.text_renderer.draw_text(
                 frame, "Наведитесь на лицо и нажмите ENTER для добавления",
-                (10, 65), 20, self.colors['learning']
+                (10, 65), 20, (0, 255, 255)
             )
         else:
             frame = self.text_renderer.draw_text(
-                frame, "РЕЖИМ ОБУЧЕНИЯ: ВЫКЛ (нажмите 'l' для входа)",
-                (10, 30), 24, self.colors['gray']
+                frame, "РЕЖИМ ОБУЧЕНИЯ: ВЫКЛЮЧЕН (нажмите 'l' для включения)",
+                (10, 30), 24, (128, 128, 128)
             )
         
         # Информация о количестве лиц
         info_text = f"Известных лиц: {known_count}"
         frame = self.text_renderer.draw_text(
             frame, info_text,
-            (10, frame.shape[0] - 30), 20, self.colors['white']
+            (10, frame.shape[0] - 30), 20, (255, 255, 255)
         )
         
         return frame
