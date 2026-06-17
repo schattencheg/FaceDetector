@@ -10,7 +10,8 @@ class KeyHandler:
             'l': False,
             's': False,
             'r': False,
-            'enter': False
+            'enter': False,
+            'tab': False
         }
         self.last_processed = {}  # Для отслеживания обработанных нажатий
         self.thread = None

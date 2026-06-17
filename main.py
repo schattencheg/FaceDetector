@@ -76,17 +76,21 @@ class Application:
         self.current_frame = None
         self.last_process_time = 0
         self.process_interval = 0.1
+        self.selected_face_index = 0
         
         # Флаг для предотвращения множественных вызовов
         self.last_learning_toggle = 0
         self.learning_toggle_cooldown = 0.5
-    
+        
+        # NEW: Mouse tracking variables for selection mode
+        self.is_mouse_tracking_active = False
+
     def run(self):
         """Запуск приложения"""
         self._print_welcome()
         self.key_handler.start()
         
-        # Запуск аудио системы
+        # Запуск аудио системы (unchanged)
         if self.audio_handler:
             try:
                 if not self.audio_handler.start():
@@ -120,6 +124,9 @@ class Application:
                 # Показываем последний обработанный кадр
                 if self.current_frame is not None:
                     cv2.imshow('Система "Свой-Чужой" с обучением', self.current_frame)
+                
+                # NEW: Bind mouse callback when running the main loop
+                self._set_mouse_callback() 
                 
                 # Сохранение скриншота
                 if self.screenshot_requested and self.current_frame is not None:
@@ -187,6 +194,9 @@ class Application:
                     self.face_recognizer.is_busy or
                     self.voice_learning_active)
         
+        # NEW: Call mouse callback at the start of frame processing
+        self._mouse_callback(frame, None, None)
+        
         if is_paused:
             return self.drawer.draw_info_panel(
                 frame.copy(),
@@ -194,11 +204,12 @@ class Application:
                 self.face_recognizer.is_learning(),
                 is_paused=True
             )
-        
+
         # ИСПОЛЬЗУЕМ ТОЛЬКО face_recognition
         face_locations, recognized_names = self.face_recognizer.detect_and_recognize(frame)
         
         if len(face_locations) == 0:
+            self.selected_face_index = 0
             return self._draw_ui(frame.copy(), [], [])
         
         # Конвертируем (top, right, bottom, left) в (x, y, w, h)
@@ -210,37 +221,55 @@ class Application:
             h = bottom - top
             faces.append((x, y, w, h))
         
+        # Ограничиваем индекс выбора
+        self.selected_face_index = self.selected_face_index % len(faces)
+        
         # Обработка каждого лица
-        for (x, y, w, h), name in zip(faces, recognized_names):
+        for i, ((x, y, w, h), name) in enumerate(zip(faces, recognized_names)):
             face_roi = frame[y:y + h, x:x + w]
             
             # Анализ эмоции
             emotion = self.emotion_analyzer.analyze(face_roi)
+            
+            # Подсветка: если это выбранное лицо и мы в режиме обучения
+            is_selected = (i == self.selected_face_index and self.face_recognizer.is_learning())
             
             # Отрисовка
             is_highlight = self._should_highlight_face(name, (x, y, w, h))
             frame = self.drawer.draw_face(
                 frame, (x, y, w, h), name, emotion,
                 self.face_recognizer.is_learning(),
-                is_highlight
+                is_highlight or is_selected
             )
             
-            # Подсказка
-            if self.face_recognizer.is_learning() and name == "Чужой":
+            # Подсказка для выбранного лица
+            if is_selected and name == "Чужой":
                 frame = self.text_renderer.draw_text(
-                    frame, "НАЖМИТЕ ENTER", 
+                    frame, "ENTER - ДОБАВИТЬ", 
                     (x, y - 50), 16, (0, 255, 255)
                 )
-            
-            # Добавление лица
-            if self._should_add_face(name, (x, y, w, h), face_roi):
-                print(f"🎯 Добавляем лицо в позиции ({x}, {y})")
-                self._add_new_face_async(face_roi)
+        
+        # Добавление только выбранного лица
+        if self.face_recognizer.is_learning():
+            sel_idx = self.selected_face_index
+            if sel_idx < len(faces):
+                (x, y, w, h) = faces[sel_idx]
+                name = recognized_names[sel_idx]
+                face_roi = frame[y:y + h, x:x + w]
+                
+                if self._should_add_face(name, (x, y, w, h), face_roi):
+                    print(f"🎯 Добавляем выбранное лицо {sel_idx} в позиции ({x}, {y})")
+                    self._add_new_face_async(face_roi)
         
         return self._draw_ui(frame, faces, recognized_names)
     
     def _should_highlight_face(self, name, face):
         """Проверка, нужно ли подсвечивать лицо"""
+        # If we are in selection mode (manual mouse input), highlighting logic changes
+        if self.face_recognizer.is_learning() and self.is_mouse_tracking_active:
+            # New simplified logic for manual selection tracking will go here later
+             pass
+
         if name != "Чужой":
             return False
         
@@ -357,13 +386,24 @@ class Application:
                 else:
                     self.face_recognizer.set_learning_mode(True)
                     print(f"\n🟢 РЕЖИМ ОБУЧЕНИЯ ВКЛЮЧЕН")
-                    print(f"   Наведитесь на лицо и нажмите ENTER\n")
+                    print(f"   'TAB' - Переключение лиц, 'ENTER' - Добавить\n")
+                    # NEW: Activate mouse tracking when entering learning mode
+                    self.is_mouse_tracking_active = True
+            else:
+                self.is_mouse_tracking_active = False # Deactivate on exit
+        
+        if self.key_handler.consume('tab'):
+            # Переключаем выбранное лицо
+            # Мы не знаем количество лиц здесь, но _process_frame это исправит
+            self.selected_face_index += 1
+            print(f"🎯 Выбрано лицо #{self.selected_face_index}")
         
         if self.key_handler.consume('s'):
             self.screenshot_requested = True
         
         if self.key_handler.consume('r'):
             self.reload_requested = True
+
     def _open_face_manager(self):
         """Открытие менеджера лиц"""
         try:
@@ -380,6 +420,23 @@ class Application:
         except Exception as e:
             print(f"Ошибка открытия менеджера лиц: {e}")
     
+    # NEW: Function to set up mouse callback
+    def _set_mouse_callback(self):
+        """Sets the global OpenCV mouse callback function."""
+        cv2.namedWindow('Система "Свой-Чужой" с обучением')
+        cv2.setMouseCallback('Система "Свой-Чужой" с обучением', self._mouse_callback)
+
+    # NEW: Mouse event handler
+    def _mouse_callback(self, event, x, y, flags, param):
+        """Handles mouse events for selection in learning mode."""
+        if not self.face_recognizer.is_learning():
+            return
+
+        if event == cv2.EVENT_MOVE and self.is_mouse_tracking_active:
+             # We track the cursor position but rely on _process_frame to use this info
+            self.current_cursor_x = x
+            self.current_cursor_y = y
+
     def _save_screenshot(self, frame):
         """Сохранение скриншота"""
         dt = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -409,7 +466,8 @@ class Application:
         print("  's' - Сохранить скриншот")
         print("  'r' - Перезагрузить базу известных лиц")
         print("  'm' - Открыть менеджер лиц (переименование/удаление)")
-        print("  'ENTER' - Добавить лицо в базу (в режиме обучения)")
+        print("  'TAB' - Выбрать другое лицо (в режиме обучения)")
+        print("  'ENTER' - Добавить выбранное лицо в базу (в режиме обучения)")        
         
         if self.enable_voice:
             print("\n  Голосовые команды:")
@@ -492,6 +550,10 @@ class Application:
         """Открытие менеджера лиц (голосовая команда)"""
         self._open_face_manager()
 
+    def __del__(self):
+        """Cleanup method for resources, including mouse binding."""
+        # Ensure the callback is cleared when the object is destroyed
+        cv2.setMouseCallback('Система "Свой-Чужой" с обучением', None)
 
 def create_test_image():
     """Создание тестового изображения если его нет"""
