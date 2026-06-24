@@ -3,5 +3,5 @@ known_faces
 screenshots
 *_UT.*
 *.tmp
-
 test.py
+.venv/
